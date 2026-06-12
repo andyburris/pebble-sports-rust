@@ -14,14 +14,16 @@
   ],
   "pebble": {
     "sdkVersion": "3",
-    "resources": {
-      "media": []
-    },
     "projectType": "native",
     "uuid": "19a34205-309a-47fc-8833-30fd68f685f7",
     "messageKeys": {
-      "taconite_window_id": 0,
-      "App_ExampleKey": 1768777472
+      "LeagueId": 1,
+      "LeagueName": 2,
+      "LeagueIconIndex": 3,
+
+      "taconite_window_id": 1413563215,
+      "ItemIndex": 1413563216,
+      "ItemTotal": 1413563217
     },
     "enableMultiJS": false,
     "displayName": "Taconite (AppMessage)",
@@ -37,7 +39,97 @@
       "chalk",
       "emery"
     ],
-    "capabilities": []
+    "capabilities": [],
+    "resources": {
+      "media": [
+        {
+          "type": "png",
+          "name": "BASEBALL_16",
+          "file": "images/Baseball-16.png"
+        },
+        {
+          "type": "png",
+          "name": "BASKETBALL_16",
+          "file": "images/Basketball-16.png"
+        },
+        {
+          "type": "png",
+          "name": "FOOTBALL_16",
+          "file": "images/Football-16.png"
+        },
+        {
+          "type": "png",
+          "name": "HOCKEY_16",
+          "file": "images/Hockey-16.png"
+        },
+        {
+          "type": "png",
+          "name": "SOCCER_16",
+          "file": "images/Soccer-16.png"
+        },
+        {
+          "type": "png",
+          "name": "STAR_16",
+          "file": "images/Star-16.png"
+        },
+        {
+          "type": "png",
+          "name": "BASEBALL_25",
+          "file": "images/Baseball-25.png"
+        },
+        {
+          "type": "png",
+          "name": "BASKETBALL_25",
+          "file": "images/Basketball-25.png"
+        },
+        {
+          "type": "png",
+          "name": "ERROR_25",
+          "file": "images/Error-25.png"
+        },
+        {
+          "type": "png",
+          "name": "FOOTBALL_25",
+          "file": "images/Football-25.png"
+        },
+        {
+          "menuIcon": true,
+          "type": "png",
+          "name": "GENERIC_25",
+          "file": "images/Generic-25.png"
+        },
+        {
+          "type": "png",
+          "name": "HOCKEY_25",
+          "file": "images/Hockey-25.png"
+        },
+        {
+          "type": "png",
+          "name": "SOCCER_25",
+          "file": "images/Soccer-25.png"
+        },
+        {
+          "type": "png",
+          "name": "STAR_25",
+          "file": "images/Star-25.png"
+        },
+        {
+          "type": "raw",
+          "name": "ERROR_80",
+          "file": "vector/error-80.pdc"
+        },
+        {
+          "type": "raw",
+          "name": "ANIM_CONFIRM",
+          "file": "vector/confirm_sequence.pdc"
+        },
+        {
+          "type": "raw",
+          "name": "ANIM_DELETED",
+          "file": "vector/deleted_sequence.pdc"
+        }
+      ]
+    }
   },
   "name": "taconite-appmessage"
 }
