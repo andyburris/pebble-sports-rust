@@ -1,86 +1,80 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
-use pebble::types::Bitmap;
+use pebble::types::{Bitmap, GColor};
 use pebble::app_message::AppMessageDict;
-use pebble::layer::{ILayer, MenuLayer, TypedMenuCallbacks, menu_cell_basic_draw};
+use pebble::layer::{ILayer, menu_cell_basic_draw};
 use pebble::std::ToCString;
-use pebble::window::Window;
-use taconite::{ScreenFns, ScreenHandle, TaconiteMessageKey, handle_list_message};
+use taconite::layer::{Menu, MenuCallbacks};
+use taconite::{ScreenCtx, ScreenFns, ScreenMessageCtx, TaconiteMessageKey, handle_list_message};
 
 use crate::MessageKey;
-use crate::model::{League, LeagueIcon};
+use crate::model::{League, Sport};
+use crate::ui::scorelist::{ScoreListScreen, ScoreListState};
 
 pub struct LeaguesScreen;
 
 pub struct LeaguesState {
-    icons: Option<[Bitmap; 6]>,
-    leagues: Vec<Option<League>>,
-}
-
-impl Default for LeaguesState {
-    fn default() -> Self {
-        Self { leagues: Vec::new(), icons: None }
-    }
+    pub icons: [Bitmap; 6],
+    pub leagues: Vec<Option<League>>,
 }
 
 pub struct LeaguesLayers {
-    menu_layer: MenuLayer<ScreenHandle>,
+    menu_layer: Menu<LeaguesState>,
 }
 
 impl ScreenFns for LeaguesScreen {
     type State = LeaguesState;
     type Layers = LeaguesLayers;
 
-    fn create_window(window: &Window, handle: *mut ScreenHandle) -> Self::Layers {
-        let root = window.get_root_layer();
+    fn create_window(ctx: &ScreenCtx<LeaguesState>) -> Self::Layers {
+        let root = ctx.root();
         let bounds = root.get_bounds();
-        let ml = MenuLayer::new(bounds, handle, TypedMenuCallbacks {
-            get_num_sections: Some(|_ctx| 1),
-            get_num_rows: Some(|ctx, _section| ctx.state::<LeaguesState>().leagues.len() as u16),
-            draw_row: Some(|gctx, cell, index, ctx| {
-                let state = ctx.state::<LeaguesState>();
+        let ml = Menu::new(bounds, ctx, MenuCallbacks {
+            get_num_rows: Some(Box::new(|ctx, _section_index| ctx.leagues.len() as u16)),
+            draw_row: Some(Box::new(|gctx, cell, index, state| {
                 if let Some(league) = state.leagues.get(index.row_idx()).flatten_ref() {
-                    menu_cell_basic_draw(gctx, cell, Some(&league.name), None, state.icons.as_ref().map(|icons| icons[league.icon.clone() as usize].internal));
+                    // Sport is 1-based (Baseball = 1 … Other = 6); icons is a 0-based
+                    // [Bitmap; 6]. Subtract one and use .get() so an unknown sport
+                    // yields no icon instead of an out-of-bounds panic.
+                    let icon = state.icons.get(league.icon as usize).map(|b| b.internal);
+                    menu_cell_basic_draw(gctx, cell, Some(&league.name), None, icon);
                 }
-            }),
-            get_cell_height: Some(|_ctx: &ScreenHandle, _index| 64i16),
-            ..TypedMenuCallbacks::default()
+            })),
+            get_cell_height: Some(Box::new(|_ctx, _index| 64i16)),
+            select_click: Some(Box::new(|state, index| {
+                let Some(selected_league) = state.leagues.get(index.row_idx()).flatten_ref() else { return; };
+                let Some(selected_icon) = state.icons.get(selected_league.icon as usize).cloned() else { return; };
+                taconite::push_screen::<ScoreListScreen>(ScoreListState { league: selected_league.clone(), icon: selected_icon, games: Vec::new() }, true);
+            })),
+            ..MenuCallbacks::default()
         });
-        ml.set_click_config_onto_window(window);
+
+        ml.set_highlight_colors(GColor::DukeBlue, GColor::White);        
+        ml.set_click_config_onto_window(ctx.window());
         root.add_child(&ml);
 
         LeaguesLayers { menu_layer: ml }
     }
 
     fn view(_state: &Self::State, layers: &Self::Layers) {
-        layers.menu_layer.reload_data();
+        layers.menu_layer.render();
     }
 
-    fn on_create(handle: &mut ScreenHandle) {
-        handle.update(|s: &mut LeaguesState| {
-            s.icons.replace([
-                Bitmap::new(0),
-                Bitmap::new(1),
-                Bitmap::new(2),
-                Bitmap::new(3),
-                Bitmap::new(4),
-                Bitmap::new(5),
-            ]);
-            false
-        });
-    }
-
-    fn on_messaging_initialized(handle: &mut ScreenHandle) {
+    fn on_messaging_initialized(ctx: &ScreenCtx<LeaguesState>) {
         // Send our window ID to the phone so it knows where to route replies.
-        taconite::send_message(&[(TaconiteMessageKey::WindowId as u32, handle.window_id as i32)]);
+        taconite::send_message(&[
+            (TaconiteMessageKey::WindowId as u32, ctx.window_id as i32), 
+            (TaconiteMessageKey::WindowType as u32, 0 as i32)
+        ]);
     }
 
-    fn on_message(handle: &mut ScreenHandle, dict: &AppMessageDict) {
-        handle.update(|s: &mut LeaguesState| {
+    fn on_message(ctx: &ScreenMessageCtx<LeaguesState, ()>, dict: &AppMessageDict) {
+        ctx.update(|s| {
             let is_last = handle_list_message(&mut s.leagues, dict, |d| {
-                let id = d.find_str(MessageKey::LeagueId as u32).unwrap_or("untitled-league");
+                let id = d.find_i32(MessageKey::LeagueId as u32).unwrap_or(-1);
                 let name = d.find_str(MessageKey::LeagueName as u32).unwrap_or("Untitled League");
-                let icon_index = d.find_i32(MessageKey::LeagueIconIndex as u32).unwrap_or(6);
-                League { id: id.to_cstring(), name: name.to_cstring(), icon: LeagueIcon::try_from(icon_index).unwrap_or(LeagueIcon::Other) }
+                let icon_index = d.find_i32(MessageKey::SportIconIndex as u32).unwrap_or(0);
+                League { id: id, name: name.to_cstring(), icon: Sport::try_from(icon_index).unwrap_or(Sport::Other) }
             });
             is_last
         });

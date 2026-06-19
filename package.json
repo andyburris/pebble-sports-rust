@@ -17,13 +17,32 @@
     "projectType": "native",
     "uuid": "19a34205-309a-47fc-8833-30fd68f685f7",
     "messageKeys": {
-      "LeagueId": 1,
-      "LeagueName": 2,
-      "LeagueIconIndex": 3,
+      "MessageType": 0,
 
-      "taconite_window_id": 1413563215,
-      "ItemIndex": 1413563216,
-      "ItemTotal": 1413563217
+      "SportIconIndex": 1,
+    
+      "LeagueId": 2,
+      "LeagueName": 3,
+
+      "GameId": 4,
+      "GameTimestamp": 5,
+      "GameStatus": 6,
+      "GameDetails": 7,
+      "GameTime": 8,
+      "GameTeamIndex": 9,
+
+      "TeamScore": 10,
+      "TeamPosession": 11,
+
+      "TeamId": 12,
+      "TeamName": 13,
+      "TeamRecord": 14,
+
+      "taconite_WindowId": 1413563215,
+      "taconite_WindowType": 1413563216,
+      "taconite_ItemIndex": 1413563217,
+      "taconite_ItemTotal": 1413563218,
+      "taconite_SubscriptionEvent": 1413563219
     },
     "enableMultiJS": false,
     "displayName": "Taconite (AppMessage)",

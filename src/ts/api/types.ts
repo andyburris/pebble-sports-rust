@@ -1,0 +1,616 @@
+// CUSTOM TYPES
+export enum Sport {
+    AustralianFootball = 0,
+    Baseball = 1,
+    Basketball = 2,
+    Cricket = 3,
+    FieldHockey = 4,
+    Football = 5,
+    Golf = 6,
+    Hockey = 7,
+    Lacrosse = 8,
+    MMA = 9,
+    Racing = 10,
+    Rugby = 11,
+    RugbyLeague = 12,
+    Soccer = 13,
+    Tennis = 14,
+    Volleyball = 15,
+    WaterPolo = 16,
+}
+export enum SportIcon {
+    Other = 0,
+    Baseball = 1,
+    Basketball = 2,
+    Football = 3,
+    Hockey = 4,
+    Soccer = 5,
+}
+
+export function getIconForSport(sport: Sport): SportIcon {
+    switch(sport) {
+        case Sport.AustralianFootball: return SportIcon.Football
+        case Sport.Baseball: return SportIcon.Baseball
+        case Sport.Basketball: return SportIcon.Basketball
+        case Sport.Cricket: return SportIcon.Other
+        case Sport.FieldHockey: return SportIcon.Other
+        case Sport.Football: return SportIcon.Football
+        case Sport.Golf: return SportIcon.Other
+        case Sport.Hockey: return SportIcon.Hockey
+        case Sport.Lacrosse: return SportIcon.Other
+        case Sport.MMA: return SportIcon.Other
+        case Sport.Racing: return SportIcon.Other
+        case Sport.Rugby: return SportIcon.Football
+        case Sport.RugbyLeague: return SportIcon.Football
+        case Sport.Soccer: return SportIcon.Soccer
+        case Sport.Tennis: return SportIcon.Other
+        case Sport.Volleyball: return SportIcon.Other
+        case Sport.WaterPolo: return SportIcon.Other
+    }
+}
+
+export type League = {
+    id: number,
+    slug: string,
+    name: string,
+    sport: Sport,
+}
+
+
+// ESPN TYPES
+export interface BaseScoreboard {
+  leagues: LeagueDetails[]
+  season: {
+    year: number
+    type: number
+  }
+  day: {
+    date: string
+  }
+  events: Event[]
+  default?: {
+    leagues: LeagueDetails[]
+    season: {
+      year: number
+      type: number
+    }
+    day: {
+      date: string
+    }
+    events: Event[]
+  }
+}
+
+export interface LeagueDetails {
+  id: string
+  uid: string
+  name: string
+  abbreviation: string
+  slug: string
+  season: SeasonDetailed
+  logos: Logo[]
+  calendarType: string
+  calendarIsWhitelist: boolean
+  calendarStartDate: string
+  calendarEndDate: string
+  calendar: string[]
+}
+
+export interface SeasonDetailed {
+  year: number
+  startDate: string
+  endDate: string
+  displayName: string
+  type: {
+    id: string
+    type: number
+    name: string
+    abbreviation: string
+  }
+}
+
+export interface Logo {
+  href: string
+  width: number
+  height: number
+  alt: string
+  rel: string[]
+  lastUpdated: string
+}
+
+export interface Event {
+  id: string
+  uid: string
+  date: string
+  name: string
+  shortName: string
+  season: {
+    year: number
+    type: number
+    slug: string
+  }
+  competitions: Competition[]
+  links: Link[]
+  status: Status
+}
+
+export interface CompetitionBase {
+  id: string
+  uid: string
+  date: string
+  attendance: number
+  type: {
+    id: string
+    abbreviation: string
+  }
+  timeValid: boolean
+  neutralSite: boolean
+  conferenceCompetition?: boolean
+  playByPlayAvailable: boolean
+  recent: boolean
+  wasSuspended?: boolean
+  venue: Venue
+  competitors: Competitor[]
+  notes: {
+    type: string
+    headline: string
+  }[]
+  status: Status
+  broadcasts: {
+    market: string
+    names: string[]
+  }[]
+  format: {
+    regulation: {
+      periods: number
+    }
+  }
+  startDate: string
+  series: Series
+  geoBroadcasts: {
+    type: {
+      id: string
+      shortName: string
+    }
+    market: {
+      id: string
+      type: string
+    }
+    media: {
+      shortName: string
+    }
+    lang: string
+    region: string
+  }[]
+  headlines: {
+    description: string
+    type: string
+    shortLinkText: string
+  }[]
+}
+
+// incomplete
+export type BaseballCompetition = CompetitionBase & {
+  situation: {
+    balls: string,
+    strikes: string,
+    outs: string,
+    batter?: { athlete: Athlete },
+    dueUp?: { athlete: Athlete }[],
+  },
+}
+export type FootballCompetition = CompetitionBase & {
+  situation: {
+    downDistanceText?: string,
+    posession?: string,
+  },
+}
+export type OtherCompetition = CompetitionBase & {}
+export type Competition = 
+  | BaseballCompetition
+  | FootballCompetition
+  | OtherCompetition
+
+export interface Series {
+  type: string
+  title: string
+  summary: string
+  completed: boolean
+  totalCompetitions: number
+  competitors: {
+    id: string
+    uid: string
+    wins: number
+    ties: number
+    href: string
+  }[]
+}
+
+export interface RecordItem {
+  description?: string
+  type?: string
+  summary: string
+  stats?: { name: string; value: number }[]
+}
+
+export interface Record {
+  name?: string
+  abbreviation?: string
+  type?: string
+  summary?: string
+  items?: RecordItem[]
+}
+
+export interface Competitor {
+  id: string
+  uid: string
+  type: string
+  order: number
+  homeAway: string
+  winner: boolean
+  team: Team
+  score: string
+  linescores: {
+    value: number
+  }[]
+  statistics: Statistic[]
+  leaders: Leader[]
+  probables: FeaturedAthlete[]
+  records: Record[]
+}
+
+export interface Leader {
+  name: string
+  displayName: string
+  shortDisplayName: string
+  abbreviation: string
+  leaders: {
+    displayName: string
+    value: number
+    athlete: Athlete
+    team: {
+      id: string
+    }
+  }[]
+}
+
+export interface Statistic {
+  name: string
+  abbreviation: string
+  displayValue: string
+}
+
+export interface Venue {
+  id: string
+  fullName: string
+  address: {
+    city: string
+    country: string
+  }
+  capacity: number
+  indoor: boolean
+}
+
+export interface Link {
+  language?: string
+  rel: string[]
+  href: string
+  text?: string
+  shortText?: string
+  isExternal?: boolean
+  isPremium?: boolean
+}
+
+export interface Status {
+  clock: number
+  displayClock: string
+  period: number
+  type: {
+    id: string
+    name: string
+    state: string
+    completed: boolean
+    description: string
+    detail: string
+    shortDetail: string
+  }
+  featuredAthletes: FeaturedAthlete[]
+}
+
+export interface Athlete {
+  id: number
+  fullName: string
+  displayName: string
+  shortName: string
+  links: Link[]
+  headshot: string
+  jersey: string
+  position: string | { abbreviation: string }
+  team: {
+    id: string
+  }
+  active?: boolean
+}
+
+export interface FeaturedAthlete {
+  name: string
+  displayName: string
+  shortDisplayName: string
+  abbreviation: string
+  playerId: number
+  athlete: Athlete
+  team: {
+    id: string
+  }
+  statistics: Statistic[]
+  status?: {
+    id: string
+    name: string
+    type: string
+    abbreviation: string
+  }
+}
+
+export interface Team {
+  id: string
+  uid: string
+  location: string
+  name: string
+  abbreviation: string
+  displayName: string
+  shortDisplayName: string
+  color: string
+  alternateColor: string
+  isActive: boolean
+  venue: {
+    id: string
+  }
+  links: Link[]
+  logo: string
+}
+
+export interface Drive {
+  id: string
+  description: string
+  team: {
+    name: string
+    abbreviation: string
+    displayName: string
+    shortDisplayName: string
+    logos: Logo[]
+  }
+  start: {
+    period: {
+      type: string
+      number: number
+    }
+    clock: {
+      displayValue: string
+    }
+    yardLine: number
+    text: string
+  }
+  end?: {
+    period: {
+      type: string
+      number: number
+    }
+    clock: {
+      displayValue: string
+    }
+    yardLine: number
+    text: string
+  }
+  timeElapsed: {
+    displayValue: string
+  }
+  yards: number
+  isScore: boolean
+  offensivePlays: number
+  result: string
+  shortDisplayResult: string
+  displayResult: string
+  plays: Play[]
+}
+
+/**
+ * Base detail type for the /summary endpoint
+ */
+export interface BaseGameDetails {
+  /**
+   * The game's boxscore
+   */
+  boxscore: BoxScore
+  /**
+   * The game's format
+   */
+  format: {
+    regulation: {
+      periods: number
+      displayName: string
+      slug: string
+      clock: number
+    }
+  }
+  gameInfo: {
+    venue: Venue
+    attendance: number
+    officials: {
+      id: string
+      fullName: string
+      position: string
+      links: Link[]
+    }[]
+  }
+  drives?: {
+    previous: Drive[]
+    current?: Drive
+  }
+  leaders: Leader[]
+  plays: Play[]
+  standings: {
+    team: Team
+    record: Record
+  }[]
+}
+
+export interface BoxScore {
+  teams: {
+    team: Team
+    statistics: Statistic[]
+  }[]
+  players: {
+    team: Team
+    statistics: {
+      name: string
+      keys: string[]
+      labels: string[]
+      descriptions: string[]
+      athletes: {
+        athlete: Athlete
+      }
+    }
+  }[]
+}
+
+export interface Play {
+  id: string
+  sequenceNumber: string
+  type: {
+    id: string
+    text: string
+    abbreviation: string
+  }
+  text: string
+  awayScore: number
+  homeScore: number
+  period: {
+    type?: string
+    number: number
+    displayValue: string
+  }
+  clock?: {
+    displayValue: string
+  }
+  participants?: {
+    athlete: Athlete
+    type: string
+  }[]
+  scoringPlay: boolean
+  priority?: boolean
+  scoreValue?: number
+  modified: string
+  wallclock: string
+  team?: {
+    id?: string
+    name?: string
+    abbreviation?: string
+    displayName?: string
+    shortDisplayName?: string
+    logos?: Logo[]
+  }
+}
+
+export type HockeyPlay = Play & {
+  shootingPlay?: boolean
+  coordinate?: {
+    x: number
+    y: number
+  }
+  strength?: {
+    id: string
+    text: string
+    abbreviation: string
+  }
+  shotInfo?: {
+    id: string
+    text: string
+    abbreviation: string
+  }
+}
+
+export type FootballPlay = Play & {
+  start?: {
+    down?: number
+    distance?: number
+    yardLine?: number
+    yardsToEndzone?: number
+    downDistanceText?: string
+    shortDownDistanceText?: string
+    possessionText?: string
+    team: {
+      id: string
+    }
+  }
+  end?: {
+    down?: number
+    distance?: number
+    yardLine?: number
+    yardsToEndzone?: number
+    downDistanceText?: string
+    shortDownDistanceText?: string
+    possessionText?: string
+    team: {
+      id: string
+    }
+  }
+}
+
+export type BaseballPlay = Play & {
+  atBatId?: string
+  batOrder?: number
+  bats?: {
+    type: string
+    abbreviation: string
+    displayValue: string
+  }
+  atBatPitchNumber?: number
+  hitCoordinate?: {
+    x: number
+    y: number
+  }
+  pitchCoordinate?: {
+    x: number
+    y: number
+  }
+  pitchType?: {
+    id: string
+    text: string
+    abbreviation: string
+  }
+  pitchVelocity?: number
+  summaryType?: string
+  pitchCount?: {
+    balls: number
+    strikes: number
+  }
+  resultCount?: {
+    balls: number
+    strikes: number
+  }
+  trajectory?: string
+  outs?: number
+  onFirst?: {
+    athlete: {
+      id: string
+    }
+  }
+  onSecond?: {
+    athlete: {
+      id: string
+    }
+  }
+  onThird?: {
+    athlete: {
+      id: string
+    }
+  }
+}
+
+export interface ScoreboardOptions {
+  dates?: string // YYYYMMDD or YYYYMMDD-YYYYMMDD for range
+  week?: number // Week number (for football)
+  year?: number // Season year
+  seasontype?: number // 1=preseason, 2=regular, 3=postseason
+  limit?: number // Max results
+}

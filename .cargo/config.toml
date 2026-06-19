@@ -1,2 +1,12 @@
 [build]
 target = "thumbv7m-none-eabi"
+
+# Recompile std from source so the `-C panic=immediate-abort` strategy (set in
+# build.sh) applies to core/alloc too. That lowers every panic straight to abort,
+# stripping core::fmt's panic_bounds_check formatting (do_count_chars /
+# pad_integral / <usize as Display>) and the libgcc EHABI unwinder.
+# compiler-builtins-mem is intentionally NOT enabled: with it off the recompiled
+# compiler_builtins emits no mem* symbols, so our own tiny memcpy/memmove/memset
+# in lib.rs are the only definitions (no large versions, no link conflict).
+[unstable]
+build-std = ["core", "alloc", "compiler_builtins"]

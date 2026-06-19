@@ -1,33 +1,68 @@
 use alloc::ffi::CString;
 
 #[derive(Clone, Copy)]
-pub enum LeagueIcon {
+pub enum Sport {
+    Other = 0,
     Baseball = 1,
     Basketball = 2,
     Football = 3,
     Hockey = 4,
     Soccer = 5,
-    Other = 6,
 }
-impl TryFrom<i32> for LeagueIcon {
+impl TryFrom<i32> for Sport {
     type Error = ();
 
     fn try_from(v: i32) -> Result<Self, Self::Error> {
         match v {
-            1 => Ok(LeagueIcon::Baseball),
-            2 => Ok(LeagueIcon::Basketball),
-            3 => Ok(LeagueIcon::Football),
-            4 => Ok(LeagueIcon::Hockey),
-            5 => Ok(LeagueIcon::Soccer),
-            6 => Ok(LeagueIcon::Other),
+            0 => Ok(Sport::Other),
+            1 => Ok(Sport::Baseball),
+            2 => Ok(Sport::Basketball),
+            3 => Ok(Sport::Football),
+            4 => Ok(Sport::Hockey),
+            5 => Ok(Sport::Soccer),
             _ => Err(()), // Returns an error for invalid numbers
         }
     }
 }
 
-
+#[derive(Clone)]
 pub struct League {
-    pub id: CString,
+    pub id: i32,
     pub name: CString,
-    pub icon: LeagueIcon,
+    pub icon: Sport,
+}
+
+#[derive(Clone)]
+pub struct Game {
+    pub id: i32,
+    pub league: League,
+    pub timestamp: i32,
+    pub state: GameState,
+
+    pub home_team: TeamState,
+    pub away_team: TeamState,
+}
+
+#[derive(Clone)] 
+pub enum GameState {
+    Scheduled,
+    Final,
+    Active {
+        time: CString,
+        details: CString,
+    },
+}
+
+#[derive(Clone)]
+pub struct TeamState {
+    pub team: Team,
+    pub score: CString,
+    pub posession: bool,
+}
+
+#[derive(Clone)]
+pub struct Team {
+    pub id: i32,
+    pub name: CString,
+    pub record: CString,
 }

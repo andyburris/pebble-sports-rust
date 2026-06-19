@@ -29,10 +29,20 @@ def build(ctx):
         # the ARM EHABI exception-table boundaries since Pebble has no exceptions.
         ctx.env.LINKFLAGS.append('-Wl,--defsym=__exidx_start=0')
         ctx.env.LINKFLAGS.append('-Wl,--defsym=__exidx_end=0')
-        ctx.env.LINKFLAGS += glob.glob('../target/thumbv7m-none-eabi/release/deps/*.o')
+        # Pebble apps are bare-metal Cortex-M (no NX/MMU); mark the stack
+        # non-executable anyway to silence GCC 14 ld's "missing .note.GNU-stack"
+        # warning. (The single RWX LOAD segment is inherent to the Pebble app
+        # format and unavoidable.)
+        ctx.env.LINKFLAGS.append('-Wl,-z,noexecstack')
+        ctx.env.LINKFLAGS += glob.glob('../target/thumbv7m-none-eabi/release/link-objs/*.o')
         os.chdir('..')
-        
-        ctx.pbl_program(source=ctx.path.ant_glob('target/thumbv7m-none-eabi/release/deps/*.o'),
+
+        # Compile pebble-rust's C shims (e.g. _pbl_is_color / _pbl_display_width)
+        # so the Rust platform bindings resolve at link time.
+        pebble_rust_c_dir = ctx.root.find_dir(os.path.normpath(os.path.join(ctx.path.abspath(), '../Samples/pebble-rust/c')))
+        pebble_rust_c = pebble_rust_c_dir.ant_glob('**/*.c') if pebble_rust_c_dir else []
+
+        ctx.pbl_program(source=ctx.path.ant_glob('target/thumbv7m-none-eabi/release/link-objs/*.o') + pebble_rust_c,
         target=app_elf)
 
         if build_worker:
