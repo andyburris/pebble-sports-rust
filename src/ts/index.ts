@@ -83,7 +83,7 @@ async function handleLeagueMenu(windowId: number) {
     console.log("sending items")
     await sendItemList(ACTIVE_LEAGUES.map(l => ({
         LeagueId: l.id,
-        LeagueName: l.name,
+        LeagueName: l.abbreviation,
         SportIconIndex: getIconForSport(l.sport),
     })), windowId)
 }
@@ -91,23 +91,22 @@ async function handleLeagueMenu(windowId: number) {
 async function handleScoreList(windowId: number, payload: AppMessageData) {
     if(payload.taconite_SubscriptionEvent === SubscriptionEvent.Subscribe && payload.LeagueId !== undefined) {
         const leagueId = payload.LeagueId! as number
-        console.log(`subscribing to league with id = ${leagueId}`)
         const league = ALL_LEAGUES[leagueId]
         if(!league) {
             console.error(`couldn't find league with id = ${leagueId}`)
             return
         }
         subscribe(windowId, 15000, (_initial: boolean) => {
-            console.log("inside subscribe, getting games")
             getGamesForLeague(league)
                 .then(games => {
-                    console.log("sending score items =", games.map(g => JSON.stringify(g)))
+                    // console.log("sending score items =", games.map(g => JSON.stringify(g)))
+                    console.log("sending score items with timestamps =", games.map(g => g.timestamp / 10e2))
 
                     return sendAdvancedList(games, windowId, async (game, send) => {
                         await send({
                             MessageType: MessageType.GameInfo,
                             GameId: game.id,
-                            GameTimestamp: game.timestamp / 10e4, // timestamp is outside of the allowed range of appmessage numbers so compress it
+                            GameTimestamp: game.timestamp / 10e2, // pebble handles timestamps in seconds, js in millis
 
                             ...(
                                 game.status === "scheduled" ? { GameStatus: 0 }

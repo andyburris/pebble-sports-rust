@@ -53,6 +53,7 @@ export type League = {
     id: number,
     slug: string,
     name: string,
+    abbreviation: string,
     sport: Sport,
 }
 

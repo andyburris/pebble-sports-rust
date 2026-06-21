@@ -1,10 +1,8 @@
-use core::ffi::CStr;
-use alloc::boxed::Box;
 use alloc::ffi::CString;
 use alloc::rc::Rc;
-use pebble::layer::{DrawLayer, ILayer};
+use pebble::layer::AsLayer;
 use pebble::types::{GBitmap, GColor, GCompOp, GCornerMask, GPoint, GRect, GSize, GTextAlignment, GTextOverflowMode};
-use pebble::system::fonts::{Font, FontKey};
+use pebble::system::fonts::{GFont, FontKey};
 use pebble::platform::is_rect;
 use pebble::{GContext, RawLayer};
 use taconite::ScreenCtx;
@@ -14,9 +12,9 @@ use taconite::layer::Draw;
 const STATUS_BAR_LAYER_HEIGHT: u16 = 16;
 const HEADER_HEIGHT: u16 = 28 + STATUS_BAR_LAYER_HEIGHT;
 
-pub struct HeaderData {
-    pub title: CString,
-    pub icon: Option<*mut GBitmap>,
+pub struct HeaderData<'a> {
+    pub title: &'a CString,
+    pub icon: Option<&'a GBitmap>,
     pub under_status_bar: bool,
 }
 
@@ -24,9 +22,9 @@ pub struct HeaderLayer {
     internal: Draw,
 }
 
-impl ILayer for HeaderLayer {
-    fn get_internal(&self) -> *mut RawLayer {
-        self.internal.get_internal()
+impl AsLayer for HeaderLayer {
+    fn as_raw(&self) -> *mut RawLayer {
+        self.internal.as_raw()
     }
 }
 
@@ -69,22 +67,22 @@ fn draw_rect(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
     ctx.set_fill_color(GColor::DukeBlue);
     ctx.fill_rect(bounds, 0, GCornerMask::GCornerNone);
 
-    let font = Font::get_system(FontKey::GOTHIC_18_BOLD);
-    let title_size = ctx.measure_text(&data.title, font.internal, bounds.size);
+    let font = GFont::get_system(FontKey::GOTHIC_18_BOLD);
+    let title_size = ctx.measure_text(&data.title, &font, bounds.size, None);
     let icon_padding: u16 = if data.icon.is_some() { 32 } else { 8 };
     let title_bounds = GRect {
         origin: GPoint { x: icon_padding, y: STATUS_BAR_LAYER_HEIGHT },
         size: GSize { w: title_size.w, h: 18 },
     };
-    ctx.draw_text(&data.title, font.internal, title_bounds, GTextOverflowMode::TrailingEllipsis, GTextAlignment::Center);
+    ctx.draw_text(&data.title, &font, title_bounds, GTextOverflowMode::TrailingEllipsis, GTextAlignment::Center);
 
-    if let Some(icon) = data.icon {
+    if let Some(icon) = &data.icon {
         let icon_bounds = GRect {
             origin: GPoint { x: 8, y: 4 + STATUS_BAR_LAYER_HEIGHT },
             size: GSize { w: 16, h: 16 },
         };
         ctx.set_compositing_mode(GCompOp::GCompOpSet);
-        ctx.draw_bitmap_in_rect(icon, icon_bounds);
+        ctx.draw_bitmap_in_rect(&icon, icon_bounds);
     }
 }
 
@@ -106,8 +104,8 @@ fn draw_circle(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
     let vert_center = (menu_bottom as i32 - radius as i32) as u16;
     ctx.fill_circle(GPoint { x: horz_center, y: vert_center }, radius);
 
-    let font = Font::get_system(FontKey::GOTHIC_18_BOLD);
-    let title_size = ctx.measure_text(&data.title, font.internal, bounds.size);
+    let font = GFont::get_system(FontKey::GOTHIC_18_BOLD);
+    let title_size = ctx.measure_text(&data.title, &font, bounds.size, None);
     let icon_padding: u16 = if data.icon.is_some() { 8 } else { 0 };
     let title_x = (bounds.size.w / 2).wrapping_sub(title_size.w / 2).wrapping_add(icon_padding);
     let title_y: u16 = if data.under_status_bar { 2 + STATUS_BAR_LAYER_HEIGHT } else { 4 };
@@ -115,9 +113,9 @@ fn draw_circle(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
         origin: GPoint { x: title_x, y: title_y },
         size: GSize { w: title_size.w, h: 18 },
     };
-    ctx.draw_text(&data.title, font.internal, title_bounds, GTextOverflowMode::TrailingEllipsis, GTextAlignment::Center);
+    ctx.draw_text(&data.title, &font, title_bounds, GTextOverflowMode::TrailingEllipsis, GTextAlignment::Center);
 
-    if let Some(icon) = data.icon {
+    if let Some(icon) = &data.icon {
         let icon_x = (bounds.size.w / 2).wrapping_sub(title_size.w / 2).wrapping_sub(12);
         let icon_y: u16 = if data.under_status_bar { 6 + STATUS_BAR_LAYER_HEIGHT } else { 8 };
         let icon_bounds = GRect {
@@ -125,6 +123,6 @@ fn draw_circle(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
             size: GSize { w: 16, h: 16 },
         };
         ctx.set_compositing_mode(GCompOp::GCompOpSet);
-        ctx.draw_bitmap_in_rect(icon, icon_bounds);
+        ctx.draw_bitmap_in_rect(&icon, icon_bounds);
     }
 }

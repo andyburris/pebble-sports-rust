@@ -1,8 +1,8 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use pebble::types::{Bitmap, GColor};
+use pebble::types::{GBitmap, GColor};
 use pebble::app_message::AppMessageDict;
-use pebble::layer::{ILayer, menu_cell_basic_draw};
+use pebble::layer::{AsLayer};
 use pebble::std::ToCString;
 use taconite::layer::{Menu, MenuCallbacks};
 use taconite::{ScreenCtx, ScreenFns, ScreenMessageCtx, TaconiteMessageKey, handle_list_message};
@@ -14,7 +14,7 @@ use crate::ui::scorelist::{ScoreListScreen, ScoreListState};
 pub struct LeaguesScreen;
 
 pub struct LeaguesState {
-    pub icons: [Bitmap; 6],
+    pub icons: [GBitmap; 6],
     pub leagues: Vec<Option<League>>,
 }
 
@@ -30,18 +30,18 @@ impl ScreenFns for LeaguesScreen {
         let root = ctx.root();
         let bounds = root.get_bounds();
         let ml = Menu::new(bounds, ctx, MenuCallbacks {
-            get_num_rows: Some(Box::new(|ctx, _section_index| ctx.leagues.len() as u16)),
-            draw_row: Some(Box::new(|gctx, cell, index, state| {
+            get_num_rows: Some(Box::new(|_ml, ctx, _section_index| ctx.leagues.len() as u16)),
+            draw_row: Some(Box::new(|_ml, gctx, cell, index, state| {
                 if let Some(league) = state.leagues.get(index.row_idx()).flatten_ref() {
                     // Sport is 1-based (Baseball = 1 … Other = 6); icons is a 0-based
-                    // [Bitmap; 6]. Subtract one and use .get() so an unknown sport
+                    // [GBitmap; 6]. Subtract one and use .get() so an unknown sport
                     // yields no icon instead of an out-of-bounds panic.
-                    let icon = state.icons.get(league.icon as usize).map(|b| b.internal);
-                    menu_cell_basic_draw(gctx, cell, Some(&league.name), None, icon);
+                    let icon = state.icons.get(league.icon as usize);
+                    cell.draw_basic(gctx, Some(&league.name), None, icon);
                 }
             })),
-            get_cell_height: Some(Box::new(|_ctx, _index| 64i16)),
-            select_click: Some(Box::new(|state, index| {
+            get_cell_height: Some(Box::new(|_ml, _ctx, _index| 64i16)),
+            select_click: Some(Box::new(|_ml, state, index| {
                 let Some(selected_league) = state.leagues.get(index.row_idx()).flatten_ref() else { return; };
                 let Some(selected_icon) = state.icons.get(selected_league.icon as usize).cloned() else { return; };
                 taconite::push_screen::<ScoreListScreen>(ScoreListState { league: selected_league.clone(), icon: selected_icon, games: Vec::new() }, true);

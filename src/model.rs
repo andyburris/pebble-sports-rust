@@ -36,7 +36,7 @@ pub struct League {
 pub struct Game {
     pub id: i32,
     pub league: League,
-    pub timestamp: i32,
+    pub timestamp: u32,
     pub state: GameState,
 
     pub home_team: TeamState,
@@ -45,8 +45,13 @@ pub struct Game {
 
 #[derive(Clone)] 
 pub enum GameState {
-    Scheduled,
-    Final,
+    Scheduled {
+        datestamp: CString,
+        timestamp: CString,
+    },
+    Final {
+        datestamp: CString,
+    },
     Active {
         time: CString,
         details: CString,

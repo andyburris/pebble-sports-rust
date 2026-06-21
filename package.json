@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "./build.sh",
-    "chalk": "./build.sh && pebble install --emulator chalk && pebble logs --emulator chalk"
+    "chalk": "./build.sh && pebble install --emulator chalk && pebble logs --emulator chalk",
+    "update-leagues": "node scripts/fetch-slugs.mjs && node scripts/fetch-leagues.mjs"
   },
   "dependencies": {
     "pkts": "^0.3.0-beta.1"

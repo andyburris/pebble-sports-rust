@@ -1,9 +1,13 @@
 use alloc::boxed::Box;
+use alloc::ffi::CString;
 use alloc::vec::Vec;
-use pebble::std::ToCString;
-use pebble::types::Bitmap;
+use pebble::GContext;
+use pebble::platform::{is_rect, is_round};
+use pebble::std::{TimeInfo, ToCString};
+use pebble::system::fonts::{FontKey, GFont};
+use pebble::types::{GBitmap, GPoint, GRect, GSize, GTextAlignment, GTextOverflowMode, time_t};
 use pebble::app_message::AppMessageDict;
-use pebble::layer::{ILayer, menu_cell_basic_draw};
+use pebble::layer::{AsLayer};
 use taconite::layer::{Menu, MenuCallbacks};
 use taconite::{ScreenCtx, ScreenFns, ScreenMessageCtx, TaconiteMessageKey, handle_list_message};
 
@@ -15,14 +19,14 @@ pub struct ScoreListScreen;
 
 pub struct ScoreListState {
     pub league: League,
-    pub icon: Bitmap,
+    pub icon: GBitmap,
     pub games: Vec<Game>
 }
 
 pub struct PartialGame {
     pub id: i32,
     pub league: League,
-    pub timestamp: i32,
+    pub timestamp: u32,
     pub state: GameState,
 
     pub home_team: Option<TeamState>,
@@ -49,16 +53,27 @@ impl ScreenFns for ScoreListScreen {
         let bounds = root.get_bounds();
 
         let ml = Menu::new(bounds, ctx, MenuCallbacks {
-            get_num_rows: Some(Box::new(|ctx, _section_index| ctx.games.len() as u16)),
-            draw_row: Some(Box::new(|gctx, cell, index, state| {
+            get_num_rows: Some(Box::new(|_ml, ctx, _section_index| ctx.games.len() as u16)),
+            draw_row: Some(Box::new(|_ml, gctx, cell, index, state| {
                 if let Some(game) = state.games.get(index.row_idx()) {
-                    menu_cell_basic_draw(gctx, cell, Some(&game.home_team.team.name), None, None);
-                } else {
-                    menu_cell_basic_draw(gctx, cell, Some(c"no game for some reason"), None, None);
+                    let cell_bounds = cell.get_bounds();
+                    let is_selected = cell.is_highlighted();
+
+                    if is_selected || is_rect() {
+                        draw_large_row(gctx, cell_bounds, game);
+                    } else {
+                        draw_small_row(gctx, cell_bounds, game);
+                    }
+                };
+            })),
+            get_cell_height: Some(Box::new(|ml, _ctx, index| match is_rect() {
+                true => 58,
+                false => match ml.is_index_selected(index) {
+                    true => 66,
+                    false => 26,
                 }
             })),
-            get_cell_height: Some(Box::new(|_ctx, _index| 64i16)),
-            select_click: Some(Box::new(|state, index| {
+            select_click: Some(Box::new(|_ml, state, index| {
             })),
             ..MenuCallbacks::default()
         });
@@ -68,7 +83,7 @@ impl ScreenFns for ScoreListScreen {
         root.add_child(&ml);
 
         let header_layer = HeaderLayer::new(bounds, ctx, |s, draw| {
-            let d = HeaderData { title: s.league.name.clone(), icon: Some(s.icon.internal), under_status_bar: false };
+            let d = HeaderData { title: &s.league.name, icon: Some(&s.icon), under_status_bar: false };
             draw(&d);
         });
         root.add_child(&header_layer);
@@ -91,7 +106,7 @@ impl ScreenFns for ScoreListScreen {
             (taconite::TaconiteMessageKey::WindowId as u32, ctx.window_id as i32), 
             (taconite::TaconiteMessageKey::WindowType as u32, 1 as i32),
             (taconite::TaconiteMessageKey::SubscriptionEvent as u32, taconite::SubscriptionEvent::Subscribe as i32),
-            (MessageKey::LeagueId as u32, 10 as i32)
+            (MessageKey::LeagueId as u32, ctx.with(|s| s.league.id) as i32)
         ]);
     }
 
@@ -105,7 +120,7 @@ impl ScreenFns for ScoreListScreen {
 
     fn on_message(ctx: &ScreenMessageCtx<ScoreListState, ScoreMessageState>, dict: &AppMessageDict) {
         let message_type = dict.find_i32(MessageKey::MessageType as u32).unwrap_or(-1);
-        pbl_log!("handling app message, type = %d", message_type);
+        // pbl_log!("handling app message, type = %d", message_type);
 
         let ready_to_commit = ctx.update_temp(|s| {
             if message_type == MessageType::GameInfo as i32 {
@@ -116,15 +131,22 @@ impl ScreenFns for ScoreListScreen {
                         name: dict.find_str(MessageKey::LeagueName as u32).unwrap_or("Untitled League").to_cstring(), 
                         icon: Sport::try_from(dict.find_i32(MessageKey::SportIconIndex as u32).unwrap_or(Sport::Other as i32)).unwrap_or(Sport::Other),
                     };
-                    let timestamp: i32 = dict.find_i32(MessageKey::GameTimestamp as u32).unwrap_or(-1);
+                    let timestamp = dict.find_i32(MessageKey::GameTimestamp as u32).unwrap_or(0) as u32;
                     let status = dict.find_i32(MessageKey::GameStatus as u32).unwrap_or(0);
                     let state: GameState = match status {
                         2 => GameState::Active { 
                             time: dict.find_str(MessageKey::GameTime as u32).unwrap_or("").to_cstring(), 
                             details: dict.find_str(MessageKey::GameDetails as u32).unwrap_or("").to_cstring()
                         },
-                        1 => GameState::Final,
-                        _ => GameState::Scheduled,
+                        1 => {
+                            let datestamp = create_datestamp(timestamp);
+                            GameState::Final { datestamp }
+                        },
+                        _ => { 
+                            let datestamp = create_datestamp(timestamp);
+                            let timestamp = create_timestamp(timestamp);
+                            GameState::Scheduled { datestamp, timestamp }
+                        },
                     };
                     PartialGame { id: game_id, league, timestamp, state, home_team: None, away_team: None }
                 });
@@ -164,4 +186,76 @@ impl ScreenFns for ScoreListScreen {
             })
         }
     }
+}
+
+fn draw_large_row(gctx: &mut GContext, cell_bounds: GRect, game: &Game) {
+    let font_bold = GFont::get_system(FontKey::GOTHIC_18_BOLD);
+    let font_regular = GFont::get_system(FontKey::GOTHIC_14);
+    let horz_padding = if is_round() { 16 } else { 8 };
+    let vert_padding = if is_round() { 4 } else { 0 };
+
+    let away_team_name_bounds = draw_and_get_bounds(gctx, &game.away_team.team.name, &font_bold, |_| GPoint { x: horz_padding, y: vert_padding }, GTextAlignment::Left, cell_bounds);
+    let home_team_name_bounds = draw_and_get_bounds(gctx, &game.home_team.team.name, &font_bold, |_| GPoint { x: horz_padding, y: vert_padding + away_team_name_bounds.size.h }, GTextAlignment::Left, cell_bounds);
+
+    let _away_team_score_bounds = draw_and_get_bounds(gctx, &game.away_team.score, &font_bold, |text_size| GPoint { x: cell_bounds.size.w - text_size.w - horz_padding, y: vert_padding }, GTextAlignment::Right, cell_bounds);
+    let _home_team_score_bounds = draw_and_get_bounds(gctx, &game.home_team.score, &font_bold, |text_size| GPoint { x: cell_bounds.size.w - text_size.w - horz_padding, y: vert_padding + away_team_name_bounds.size.h }, GTextAlignment::Right, cell_bounds);
+
+    match &game.state {
+        GameState::Final { datestamp } => {
+            draw_and_get_bounds(gctx, &datestamp, &font_regular, |_| GPoint { x: horz_padding, y: home_team_name_bounds.origin.y + home_team_name_bounds.size.h }, GTextAlignment::Left, cell_bounds);
+            draw_and_get_bounds(gctx, &c"Final".into(), &font_regular, |text_size| GPoint { x: cell_bounds.size.w - text_size.w - horz_padding, y: home_team_name_bounds.origin.y + home_team_name_bounds.size.h }, GTextAlignment::Right, cell_bounds);
+        },
+        GameState::Scheduled { datestamp, timestamp } => {
+            draw_and_get_bounds(gctx, &datestamp, &font_regular, |_| GPoint { x: horz_padding, y: home_team_name_bounds.origin.y + home_team_name_bounds.size.h }, GTextAlignment::Left, cell_bounds);
+            draw_and_get_bounds(gctx, &timestamp, &font_regular, |text_size| GPoint { x: cell_bounds.size.w - text_size.w - horz_padding, y: home_team_name_bounds.origin.y + home_team_name_bounds.size.h }, GTextAlignment::Right, cell_bounds);
+        },
+        GameState::Active { time, details } => {
+            draw_and_get_bounds(gctx, &details, &font_regular, |_| GPoint { x: horz_padding, y: home_team_name_bounds.origin.y + home_team_name_bounds.size.h }, GTextAlignment::Left, cell_bounds);
+            draw_and_get_bounds(gctx, &time, &font_regular, |text_size| GPoint { x: cell_bounds.size.w - text_size.w - horz_padding, y: home_team_name_bounds.origin.y + home_team_name_bounds.size.h }, GTextAlignment::Right, cell_bounds);
+        },
+    }
+
+    // TODO: possession
+
+}
+
+fn draw_small_row(gctx: &mut GContext, cell_bounds: GRect, game: &Game) {
+    let font_bold = GFont::get_system(FontKey::GOTHIC_18_BOLD);
+    let summary = match game.state {
+        GameState::Scheduled { .. } => pbl_format!("{} - {}", game.away_team.team.name, game.home_team.team.name).to_cstring(),
+        GameState::Final { .. } | GameState::Active { .. } => pbl_format!("{} {} - {} {}", game.away_team.team.name, game.away_team.score, game.home_team.score, game.home_team.team.name).to_cstring(),
+    };
+    gctx.draw_text(&summary, &font_bold, cell_bounds, GTextOverflowMode::TrailingEllipsis, GTextAlignment::Center);
+}
+
+fn draw_and_get_bounds(gctx: &mut GContext, text: &CString, font: &GFont, origin: impl Fn(GSize) -> GPoint, alignment: GTextAlignment, cell_bounds: GRect) -> GRect {
+    let size = gctx.measure_text(text, font, cell_bounds.size, Some((GTextOverflowMode::TrailingEllipsis, alignment)));
+    let origin = origin(size);
+    let bounds = GRect { origin, size };
+    gctx.draw_text(&text, &font, bounds, GTextOverflowMode::TrailingEllipsis, GTextAlignment::Left);
+    bounds
+}
+
+fn create_datestamp(time: time_t) -> CString {
+    let ti = TimeInfo::from_local(time);
+    let datestamp = ti.format(c"%x");
+
+    // trim the last three year chars (e.g. "/26")
+    let truncated_datestamp = match datestamp.char_indices().rev().nth(2) {
+        Some((idx, _)) => datestamp[..idx].to_cstring(),
+        None => c"".into(), // Returns empty string if total characters < 3
+    };
+    truncated_datestamp
+}
+
+fn create_timestamp(time: time_t) -> CString {
+    let ti = TimeInfo::from_local(time);
+    let datestamp = ti.format(c"%X");
+    // trim the last three second chars (e.g. ":00")
+    let truncated_datestamp = match datestamp.char_indices().rev().nth(2) {
+        Some((idx, _)) => datestamp[..idx].to_cstring(),
+        None => c"".into(), // Returns empty string if total characters < 3
+    };
+
+    truncated_datestamp
 }

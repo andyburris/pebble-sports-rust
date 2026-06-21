@@ -12,7 +12,7 @@ mod ui;
 mod model;
 
 use alloc::vec::Vec;
-use pebble::{app, types::Bitmap};
+use pebble::{app, types::GBitmap};
 use pebble::app_message::AppMessage;
 
 use crate::ui::leagues::{LeaguesScreen, LeaguesState};
@@ -190,13 +190,13 @@ pub extern "C" fn __aeabi_unwind_cpp_pr1() {}
 #[unsafe(no_mangle)]
 pub extern "C" fn __aeabi_unwind_cpp_pr2() {}
 
-fn create_sport_icons() -> [Bitmap; 6] {
+fn create_sport_icons() -> [GBitmap; 6] {
     [
-        Bitmap::new(0),
-        Bitmap::new(1),
-        Bitmap::new(2),
-        Bitmap::new(3),
-        Bitmap::new(4),
-        Bitmap::new(5),
+        GBitmap::new(0),
+        GBitmap::new(1),
+        GBitmap::new(2),
+        GBitmap::new(3),
+        GBitmap::new(4),
+        GBitmap::new(5),
     ]
 }
