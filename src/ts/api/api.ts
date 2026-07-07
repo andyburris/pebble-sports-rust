@@ -20,10 +20,11 @@ export async function getGamesForLeague(league: League): Promise<PebbleGame[]> {
 function responseEventToPebbleGame(league: League, event: Event): PebbleGame {
     const competition = event.competitions[0]
     const date = new Date(competition.date)
+    const rawStatus = competition.status.type.name
     const status: PebbleGameStatus = 
-        (competition.status.type.name === "STATUS_SCHEDULED") ? "scheduled"
-        : (competition.status.type.name === "STATUS_FINAL") ? "final"
-        : (competition.status.type.name === "STATUS_IN_PROGRESS") ? { 
+        (rawStatus === "STATUS_SCHEDULED") ? "scheduled"
+        : (competition.status.type.completed || competition.status.type.state === "post" || rawStatus === "STATUS_FINAL") ? "final"
+        : (competition.status.type.state === "in" || rawStatus === "STATUS_IN_PROGRESS" || rawStatus === "STATUS_DELAYED") ? { 
             time: competition.status.type.shortDetail.replace("- ", ""),
             details: parseGameDetails(league.sport, competition)
         }
