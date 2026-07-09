@@ -5,7 +5,7 @@ use pebble::GContext;
 use pebble::platform::{is_rect, is_round};
 use pebble::std::{TimeInfo, ToCString};
 use pebble::system::fonts::{FontKey, GFont};
-use pebble::types::{GBitmap, GPoint, GRect, GSize, GTextAlignment, GTextOverflowMode, time_t};
+use pebble::types::{GBitmap, GColor, GEdgeInsets, GPoint, GRect, GSize, GTextAlignment, GTextOverflowMode, MenuIndex, time_t};
 use pebble::app_message::AppMessageDict;
 use pebble::layer::{AsLayer};
 use taconite::layer::{Menu, MenuCallbacks};
@@ -20,7 +20,8 @@ pub struct ScoreListScreen;
 pub struct ScoreListState {
     pub league: League,
     pub icon: GBitmap,
-    pub games: Vec<Game>
+    pub games: Vec<Game>,
+    pub selected_index: MenuIndex,
 }
 
 pub struct PartialGame {
@@ -52,7 +53,11 @@ impl ScreenFns for ScoreListScreen {
         let root = ctx.root();
         let bounds = root.get_bounds();
 
-        let ml = Menu::new(bounds, ctx, MenuCallbacks {
+        let header_layer = HeaderLayer::new(bounds, ctx.state().map(|s| HeaderData { title: s.focus(|s| &s.league.name), icon: Some(s.focus(|s| &s.icon)), under_status_bar: s.selected_index.row == 0 }));
+
+        let menu_height_top_inset = if is_rect() { header_layer.get_bounds().size.h } else { 0 };
+        let menu_bounds = bounds.inset(GEdgeInsets::top(menu_height_top_inset));
+        let ml = Menu::new(menu_bounds, ctx.state(), MenuCallbacks {
             get_num_rows: Some(Box::new(|_ml, ctx, _section_index| ctx.games.len() as u16)),
             draw_row: Some(Box::new(|_ml, gctx, cell, index, state| {
                 if let Some(game) = state.games.get(index.row_idx()) {
@@ -73,21 +78,22 @@ impl ScreenFns for ScoreListScreen {
                     false => 26,
                 }
             })),
-            select_click: Some(Box::new(|_ml, state, index| {
+            select_click: Some(Box::new(|_ml, index| {
+            })),
+            selection_changed: Some(Box::new({
+                let state = ctx.state();
+                move |_ml, _old_index: MenuIndex, new_index: MenuIndex| {
+                    state.update(|s| s.selected_index = new_index);
+                }
             })),
             ..MenuCallbacks::default()
         });
 
-
+        ml.set_highlight_colors(GColor::DukeBlue, GColor::White);
+        // ml.set_center_focused(true);
         ml.set_click_config_onto_window(ctx.window());
         root.add_child(&ml);
-
-        let header_layer = HeaderLayer::new(bounds, ctx, |s, draw| {
-            let d = HeaderData { title: &s.league.name, icon: Some(&s.icon), under_status_bar: false };
-            draw(&d);
-        });
         root.add_child(&header_layer);
-
 
         ScoreListLayers { 
             header_layer, 
@@ -106,7 +112,7 @@ impl ScreenFns for ScoreListScreen {
             (taconite::TaconiteMessageKey::WindowId as u32, ctx.window_id as i32), 
             (taconite::TaconiteMessageKey::WindowType as u32, 1 as i32),
             (taconite::TaconiteMessageKey::SubscriptionEvent as u32, taconite::SubscriptionEvent::Subscribe as i32),
-            (MessageKey::LeagueId as u32, ctx.with(|s| s.league.id) as i32)
+            (MessageKey::LeagueId as u32, ctx.state().with(|s| s.league.id) as i32)
         ]);
     }
 

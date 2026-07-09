@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "./build.sh",
+    "aplite": "./build.sh && pebble install --emulator aplite && pebble logs --emulator aplite",
+    "basalt": "./build.sh && pebble install --emulator basalt && pebble logs --emulator basalt",
     "chalk": "./build.sh && pebble install --emulator chalk && pebble logs --emulator chalk",
     "update-leagues": "node scripts/fetch-slugs.mjs && node scripts/fetch-leagues.mjs"
   },

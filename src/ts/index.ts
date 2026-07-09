@@ -73,11 +73,11 @@ async function handleWindowMessage(windowId: number, windowType: number, payload
 
 
 const ACTIVE_LEAGUES: League[] = [
+    ALL_LEAGUES[606],
     ALL_LEAGUES[10],
     ALL_LEAGUES[46],
     ALL_LEAGUES[90],
     ALL_LEAGUES[28],
-    ALL_LEAGUES[770],
 ]
 async function handleLeagueMenu(windowId: number) {
     console.log("sending items")

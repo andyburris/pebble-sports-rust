@@ -1,20 +1,20 @@
 use alloc::ffi::CString;
-use alloc::rc::Rc;
 use pebble::layer::AsLayer;
 use pebble::types::{GBitmap, GColor, GCompOp, GCornerMask, GPoint, GRect, GSize, GTextAlignment, GTextOverflowMode};
 use pebble::system::fonts::{GFont, FontKey};
 use pebble::platform::is_rect;
 use pebble::{GContext, RawLayer};
-use taconite::ScreenCtx;
+use taconite::state::Snap;
+use taconite::{State};
 use taconite::layer::Draw;
 
 
-const STATUS_BAR_LAYER_HEIGHT: u16 = 16;
-const HEADER_HEIGHT: u16 = 28 + STATUS_BAR_LAYER_HEIGHT;
+const STATUS_BAR_LAYER_HEIGHT: i16 = 16;
+const HEADER_HEIGHT: i16 = 28 + STATUS_BAR_LAYER_HEIGHT;
 
-pub struct HeaderData<'a> {
-    pub title: &'a CString,
-    pub icon: Option<&'a GBitmap>,
+pub struct HeaderData {
+    pub title: Snap<CString>,
+    pub icon: Option<Snap<GBitmap>>,
     pub under_status_bar: bool,
 }
 
@@ -29,25 +29,21 @@ impl AsLayer for HeaderLayer {
 }
 
 impl HeaderLayer {
-    pub fn new<S: 'static>(window_bounds: GRect, ctx: &ScreenCtx<S>, get_data: impl Fn(&S, &mut dyn FnMut(&HeaderData)) + 'static) -> Self {
+    pub fn new(window_bounds: GRect, state: impl Into<State<HeaderData>>) -> Self {
+        let state = state.into();
         let header_bounds = GRect {
             origin: window_bounds.origin,
             size: GSize { w: window_bounds.size.w, h: HEADER_HEIGHT },
         };
 
-        // share callback between children
-        let get_data: Rc<dyn Fn(&S, &mut dyn FnMut(&HeaderData))> = Rc::new(get_data);
-
-        let dl = Draw::new(header_bounds, ctx, move |ctx, data, frame| {
-            get_data(data, &mut |data| {
-                let bounds = GRect { origin: GPoint { x: 0, y: 0 }, size: frame.size };
-                pbl_log!("drawing league header, name = %s", data.title.clone());
-                if is_rect() {
-                    draw_rect(ctx, data, bounds);
-                } else {
-                    draw_circle(ctx, data, bounds);
-                }
-            });
+        let dl = Draw::new(header_bounds, state, move |ctx, data, frame| {
+            let bounds = GRect { origin: GPoint { x: 0, y: 0 }, size: frame.size };
+            // pbl_log!("drawing league header, name = %s", data.title.clone());
+            if is_rect() {
+                draw_rect(ctx, data, bounds);
+            } else {
+                draw_circle(ctx, data, bounds);
+            }
         });
 
         HeaderLayer { internal: dl }
@@ -56,11 +52,6 @@ impl HeaderLayer {
     pub fn render(&self) {
         self.internal.render();
     }
-
-    // pub fn set_under_status_bar(&mut self, under_status_bar: bool) {
-    //     self.data.under_status_bar = under_status_bar;
-    //     self.layer.mark_dirty();
-    // }
 }
 
 fn draw_rect(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
@@ -69,7 +60,7 @@ fn draw_rect(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
 
     let font = GFont::get_system(FontKey::GOTHIC_18_BOLD);
     let title_size = ctx.measure_text(&data.title, &font, bounds.size, None);
-    let icon_padding: u16 = if data.icon.is_some() { 32 } else { 8 };
+    let icon_padding = if data.icon.is_some() { 32 } else { 8 };
     let title_bounds = GRect {
         origin: GPoint { x: icon_padding, y: STATUS_BAR_LAYER_HEIGHT },
         size: GSize { w: title_size.w, h: 18 },
@@ -87,7 +78,7 @@ fn draw_rect(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
 }
 
 fn draw_circle(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
-    let menu_bottom: u16 = if data.under_status_bar { 28 + STATUS_BAR_LAYER_HEIGHT } else { 32 };
+    let menu_bottom = if data.under_status_bar { 28 + STATUS_BAR_LAYER_HEIGHT } else { 32 };
 
     // Mask any overflowing menu items behind the header
     let mask_bounds = GRect {
@@ -101,14 +92,14 @@ fn draw_circle(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
     let radius = bounds.size.w;
     let horz_center = bounds.size.w / 2;
     // vert_center can be negative (circle extends above the layer); cast through u16 preserves the two's-complement bit pattern expected by the C SDK's int16_t GPoint fields
-    let vert_center = (menu_bottom as i32 - radius as i32) as u16;
-    ctx.fill_circle(GPoint { x: horz_center, y: vert_center }, radius);
+    let vert_center = menu_bottom - radius;
+    ctx.fill_circle(GPoint { x: horz_center, y: vert_center }, radius as u16);
 
     let font = GFont::get_system(FontKey::GOTHIC_18_BOLD);
     let title_size = ctx.measure_text(&data.title, &font, bounds.size, None);
-    let icon_padding: u16 = if data.icon.is_some() { 8 } else { 0 };
+    let icon_padding = if data.icon.is_some() { 8 } else { 0 };
     let title_x = (bounds.size.w / 2).wrapping_sub(title_size.w / 2).wrapping_add(icon_padding);
-    let title_y: u16 = if data.under_status_bar { 2 + STATUS_BAR_LAYER_HEIGHT } else { 4 };
+    let title_y = if data.under_status_bar { 2 + STATUS_BAR_LAYER_HEIGHT } else { 4 };
     let title_bounds = GRect {
         origin: GPoint { x: title_x, y: title_y },
         size: GSize { w: title_size.w, h: 18 },
@@ -117,7 +108,7 @@ fn draw_circle(ctx: &mut GContext, data: &HeaderData, bounds: GRect) {
 
     if let Some(icon) = &data.icon {
         let icon_x = (bounds.size.w / 2).wrapping_sub(title_size.w / 2).wrapping_sub(12);
-        let icon_y: u16 = if data.under_status_bar { 6 + STATUS_BAR_LAYER_HEIGHT } else { 8 };
+        let icon_y = if data.under_status_bar { 6 + STATUS_BAR_LAYER_HEIGHT } else { 8 };
         let icon_bounds = GRect {
             origin: GPoint { x: icon_x, y: icon_y },
             size: GSize { w: 16, h: 16 },
