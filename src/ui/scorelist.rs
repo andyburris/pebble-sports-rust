@@ -8,8 +8,8 @@ use pebble::system::fonts::{FontKey, GFont};
 use pebble::types::{GBitmap, GColor, GEdgeInsets, GPoint, GRect, GSize, GTextAlignment, GTextOverflowMode, MenuIndex, time_t};
 use pebble::app_message::AppMessageDict;
 use pebble::layer::{AsLayer};
-use taconite::layer::{Menu, MenuCallbacks};
-use taconite::{ScreenCtx, ScreenFns, ScreenMessageCtx, TaconiteMessageKey, handle_list_message};
+use taconite::layer::{ContentIndicatorLayer, Menu, MenuCallbacks};
+use taconite::{ScreenCtx, ScreenFns, ScreenMessageCtx, State, StatusBarLayer, TaconiteMessageKey, handle_list_message};
 
 use crate::{MessageKey, MessageType};
 use crate::model::{Game, GameState, League, Sport, Team, TeamState};
@@ -42,6 +42,8 @@ pub struct ScoreMessageState {
 pub struct ScoreListLayers {
     header_layer: HeaderLayer,
     menu_layer: Menu<ScoreListState>,
+    content_indicator_layer: ContentIndicatorLayer,
+    status_bar_layer: StatusBarLayer,
 }
 
 impl ScreenFns for ScoreListScreen {
@@ -54,6 +56,11 @@ impl ScreenFns for ScoreListScreen {
         let bounds = root.get_bounds();
 
         let header_layer = HeaderLayer::new(bounds, ctx.state().map(|s| HeaderData { title: s.focus(|s| &s.league.name), icon: Some(s.focus(|s| &s.icon)), under_status_bar: s.selected_index.row == 0 }));
+        
+        let content_indicator_layer = ContentIndicatorLayer::new(bounds, State::fixed(false), ctx.state().map(|s| s.selected_index.row < (s.games.len() as u16 - 1)));
+
+        let status_bar_layer = StatusBarLayer::new();
+        status_bar_layer.set_colors(GColor::Clear, GColor::White);
 
         let menu_height_top_inset = if is_rect() { header_layer.get_bounds().size.h } else { 0 };
         let menu_bounds = bounds.inset(GEdgeInsets::top(menu_height_top_inset));
@@ -93,17 +100,23 @@ impl ScreenFns for ScoreListScreen {
         // ml.set_center_focused(true);
         ml.set_click_config_onto_window(ctx.window());
         root.add_child(&ml);
+        root.add_child(&content_indicator_layer);
         root.add_child(&header_layer);
+        root.add_child(&status_bar_layer);
 
         ScoreListLayers { 
             header_layer, 
-            menu_layer: ml 
+            menu_layer: ml,
+            content_indicator_layer,
+            status_bar_layer,
         }
     }
 
     fn view(state: &Self::State, layers: &Self::Layers) {
-        layers.menu_layer.render();
         layers.header_layer.render();
+        layers.menu_layer.render();
+        layers.content_indicator_layer.render();
+        layers.status_bar_layer.set_hidden(state.selected_index.row != 0);
     }
 
     fn on_messaging_initialized(ctx: &ScreenCtx<ScoreListState>) {
