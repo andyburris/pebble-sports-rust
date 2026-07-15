@@ -5,3 +5,5 @@ build/
 
 node_modules/
 src/js/
+src/ts/config/page.generated.ts
+src/ts/config/.vite-dist/

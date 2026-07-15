@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "react": ["../../../node_modules/preact/compat"],
+      "react-dom": ["../../../node_modules/preact/compat"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

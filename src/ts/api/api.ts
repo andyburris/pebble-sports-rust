@@ -32,8 +32,6 @@ function responseEventToPebbleGame(league: League, event: Event): PebbleGame {
 
     const homeCompetitor = competition.competitors[0] // ESPN lists home team first
     const awayCompetitor = competition.competitors[1]
-    const homeTeam = homeCompetitor.team
-    const awayTeam = awayCompetitor.team
 
     function getRecord(competitor: Competitor) {
         return competitor.records?.[0]?.summary ?? (competitor as any).record?.summary ?? ""
@@ -41,17 +39,18 @@ function responseEventToPebbleGame(league: League, event: Event): PebbleGame {
 
     const posessionTeamId = getPossessionTeamId(league.sport, competition)
 
+    // TODO: strip names of special characters that pebble can't handle (like accents, emojis, etc). replace with closest ascii equivalent if possible.
     return {
         id: parseInt(competition.id),
         timestamp: date.getTime(),
         status: status,
         homeTeam: {
-            team: { id: parseInt(homeTeam.id), name: homeTeam.abbreviation, record: getRecord(homeCompetitor) },
+            team: { id: parseInt(homeCompetitor.id), name: homeCompetitor.team?.abbreviation ?? homeCompetitor.athlete?.shortName ?? "Home", record: getRecord(homeCompetitor) },
             score: homeCompetitor.score,
             posession: homeCompetitor.id === posessionTeamId,
         },
         awayTeam: {
-            team: { id: parseInt(awayTeam.id), name: awayTeam.abbreviation, record: getRecord(awayCompetitor) },
+            team: { id: parseInt(awayCompetitor.id), name: awayCompetitor.team?.abbreviation ?? awayCompetitor.athlete?.shortName ?? "Away", record: getRecord(awayCompetitor) },
             score: awayCompetitor.score,
             posession: awayCompetitor.id === posessionTeamId,
         },

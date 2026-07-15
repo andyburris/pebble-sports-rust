@@ -1,4 +1,5 @@
 {
   "extends": "pkts/config/tsconfig.json",
-  "include": ["src/ts/**/*", "node_modules/pkts/lib/**/*"]
+  "include": ["src/ts/**/*", "node_modules/pkts/lib/**/*"],
+  "exclude": ["src/ts/config/**/*.tsx", "src/ts/config/vite.config.ts"]
 }

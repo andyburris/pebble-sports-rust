@@ -249,7 +249,8 @@ export interface Competitor {
   order: number
   homeAway: string
   winner: boolean
-  team: Team
+  team?: Team
+  athlete?: Athlete
   score: string
   linescores: {
     value: number

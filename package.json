@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "build": "./build.sh",
+    "build:config": "vite build --config src/ts/config/vite.config.ts",
+    "dev:config": "vite --config src/ts/config/vite.config.ts",
     "aplite": "./build.sh && pebble install --emulator aplite && pebble logs --emulator aplite",
     "basalt": "./build.sh && pebble install --emulator basalt && pebble logs --emulator basalt",
     "chalk": "./build.sh && pebble install --emulator chalk && pebble logs --emulator chalk",
+    "phone": "./build.sh && pebble install --phone 10.0.0.227 && pebble logs --phone 10.0.0.227",
     "update-leagues": "node scripts/fetch-slugs.mjs && node scripts/fetch-leagues.mjs"
   },
   "dependencies": {
@@ -21,26 +24,20 @@
     "uuid": "19a34205-309a-47fc-8833-30fd68f685f7",
     "messageKeys": {
       "MessageType": 0,
-
       "SportIconIndex": 1,
-    
       "LeagueId": 2,
       "LeagueName": 3,
-
       "GameId": 4,
       "GameTimestamp": 5,
       "GameStatus": 6,
       "GameDetails": 7,
       "GameTime": 8,
       "GameTeamIndex": 9,
-
       "TeamScore": 10,
       "TeamPosession": 11,
-
       "TeamId": 12,
       "TeamName": 13,
       "TeamRecord": 14,
-
       "taconite_WindowId": 1413563215,
       "taconite_WindowType": 1413563216,
       "taconite_ItemIndex": 1413563217,
@@ -48,7 +45,7 @@
       "taconite_SubscriptionEvent": 1413563219
     },
     "enableMultiJS": false,
-    "displayName": "Taconite (AppMessage)",
+    "displayName": "Sports (Rust)",
     "watchapp": {
       "onlyShownOnCommunication": false,
       "hiddenApp": false,
@@ -61,7 +58,9 @@
       "chalk",
       "emery"
     ],
-    "capabilities": [],
+    "capabilities": [
+      "configurable"
+    ],
     "resources": {
       "media": [
         {
@@ -153,5 +152,14 @@
       ]
     }
   },
-  "name": "taconite-appmessage"
+  "name": "taconite-appmessage",
+  "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
+    "@szhsin/react-autocomplete": "^1.2.1",
+    "@tailwindcss/vite": "^4.3.2",
+    "preact": "^10.29.7",
+    "tailwindcss": "^4.3.2",
+    "vite": "^8.1.4",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
 }

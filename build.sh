@@ -21,6 +21,10 @@ rm -rf "$LINK_OBJS"
 mkdir -p "$LINK_OBJS"
 ( cd "$LINK_OBJS" && "$PEBBLE_AR" x "../libappmessage.a" )
 
+# Build the React settings page and embed it as a base64 data URI
+# (writes src/ts/config/page.generated.ts, imported by the pkjs bundle below)
+bunx vite build --config src/ts/config/vite.config.ts || exit 1
+
 # Compile TypeScript before waf bundles it
 bunx pkts build
 mkdir -p src/js

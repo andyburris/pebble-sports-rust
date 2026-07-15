@@ -1,6 +1,8 @@
 import { getGamesForLeague } from "./api/api"
 import { ALL_LEAGUES } from "./api/leagues"
-import { getIconForSport, League } from "./api/types"
+import { getIconForSport } from "./api/types"
+import { CONFIG_PAGE } from "./config/page.generated"
+import { getCurrentSettings, PebbleSportsSettings, saveSettings } from "./settings"
 import { sendAdvancedList, sendItemList } from "./util/messaging"
 import { subscribe, unsubscribe } from "./util/subscription"
 
@@ -47,11 +49,23 @@ export enum MessageType {
     GameTeamState = 2,
 }
 
-
 // Signal the watch that the phone is ready; taconite will call
 // on_messaging_initialized on all active screens so they send their window IDs.
 Pebble.addEventListener('ready', async () => {
     await PebbleTS.sendAppMessage({ taconite_WindowId: 0 })
+})
+
+// Show the settings screen. CONFIG_PAGE is the React app inlined into a single
+// HTML file and base64-encoded at build time, opened as a self-contained data
+// URI so it works offline (Clay-style). See src/ts/config/.
+Pebble.addEventListener('showConfiguration', () => {
+    Pebble.openURL('data:text/html;base64,' + CONFIG_PAGE + "#" + encodeURIComponent(JSON.stringify(getCurrentSettings())))
+})
+
+Pebble.addEventListener("webviewclosed", (e: { response: string }) => {
+    console.log("webview closed, response =", e.response)
+    const updated = JSON.parse(decodeURIComponent(e.response)) as PebbleSportsSettings
+    saveSettings(updated)
 })
 
 // The watch sends its window ID from on_messaging_initialized; reply with the
@@ -72,16 +86,10 @@ async function handleWindowMessage(windowId: number, windowType: number, payload
 }
 
 
-const ACTIVE_LEAGUES: League[] = [
-    ALL_LEAGUES[606],
-    ALL_LEAGUES[10],
-    ALL_LEAGUES[46],
-    ALL_LEAGUES[90],
-    ALL_LEAGUES[28],
-]
+const settings = getCurrentSettings()
 async function handleLeagueMenu(windowId: number) {
     console.log("sending items")
-    await sendItemList(ACTIVE_LEAGUES.map(l => ({
+    await sendItemList(settings.leagues.map(l => ({
         LeagueId: l.id,
         LeagueName: l.abbreviation,
         SportIconIndex: getIconForSport(l.sport),
