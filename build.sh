@@ -2,28 +2,28 @@
 
 target="thumbv7m-none-eabi"
 
-export RUSTFLAGS="-C relocation-model=pie -C codegen-units=1 -C link-arg=--gc-sections -C link-arg=--build-id=sha1 -C link-arg=--emit-relocs -C debuginfo=2 -Z unstable-options -C panic=immediate-abort -C force-unwind-tables=no"
+# panic=immediate-abort lowers every panic (incl. bounds checks) straight to abort,
+# so no format_args is built and the core::fmt tree gc's out (needs build-std).
+# force-unwind-tables=no stops Rust emitting .ARM.exidx (drops the unwinder + shrinks .data/.bss).
+export RUSTFLAGS="-Zlocation-detail=none -C relocation-model=pie -C codegen-units=1 -C link-arg=--gc-sections -C link-arg=--build-id=sha1 -C link-arg=--emit-relocs -C debuginfo=2 -C panic=immediate-abort -C force-unwind-tables=no -Z unstable-options"
 
-# Build the project through Cargo
 cargo --version
 cargo build --target $target --release || exit 1
 
-# Extract the self-contained staticlib into a *clean* dir (use GNU ar from the
-# Pebble SDK; macOS BSD ar can't handle GNU-format archives). We extract
-# libappmessage.a — the final crate-type=staticlib output, which bundles exactly
-# the LTO'd objects we need (core/alloc/compiler_builtins/our crate) — rather than
-# scraping target/.../deps/*.o. The deps dir accumulates stale .rcgu.o across
-# builds and holds the un-LTO'd multi-CGU dependency objects; globbing it links
-# duplicate/old symbols (silently resolved by --allow-multiple-definition).
-PEBBLE_AR="$HOME/Library/Application Support/Pebble SDK/SDKs/current/toolchain/arm-none-eabi/bin/arm-none-eabi-ar"
+# Extract the self-contained crate-type=staticlib output into a FRESH dir each build.
+TOOLCHAIN="$HOME/Library/Application Support/Pebble SDK/SDKs/current/toolchain/arm-none-eabi/bin"
+PEBBLE_AR="$TOOLCHAIN/arm-none-eabi-ar"
 LINK_OBJS="target/$target/release/link-objs"
-rm -rf "$LINK_OBJS"
-mkdir -p "$LINK_OBJS"
-( cd "$LINK_OBJS" && "$PEBBLE_AR" x "../libappmessage.a" )
+rm -rf "$LINK_OBJS"; mkdir -p "$LINK_OBJS"
+( cd "$LINK_OBJS" && "$PEBBLE_AR" x ../*.a )
 
-# Build the React settings page and embed it as a base64 data URI
-# (writes src/ts/config/page.generated.ts, imported by the pkjs bundle below)
-bunx vite build --config src/ts/config/vite.config.ts || exit 1
+# Strip .ARM.exidx/.extab from the extracted objects. The SDK linker script doesn't
+# place them, so ld inserts them as orphans between .header and .note.gnu.build-id —
+# the script warns that area's layout must not change (the firmware reads fixed
+# offsets from the app header region; shifting the note corrupts app launch).
+for o in "$LINK_OBJS"/*.o; do
+  "$TOOLCHAIN/arm-none-eabi-objcopy" --remove-section '.ARM.exidx*' --remove-section '.ARM.extab*' "$o"
+done
 
 # Compile TypeScript before waf bundles it
 bunx pkts build
@@ -31,5 +31,4 @@ mkdir -p src/js
 cp src/ts-build/index.js src/js/pebble-js-app.js
 rm -rf src/ts-build
 
-# Build through waf
 pebble build

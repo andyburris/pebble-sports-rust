@@ -9,3 +9,6 @@ crate-type = ["staticlib"]
 [dependencies]
 pebble-rust = { path = "../Samples/pebble-rust" }
 taconite = { path = "../Samples/taconite" }
+
+[profile.release]
+opt-level = "s"
